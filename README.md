@@ -1,3 +1,14 @@
+---
+title: Rag Pipline
+emoji: 👀
+colorFrom: red
+colorTo: green
+sdk: docker
+pinned: false
+license: mit
+---
+
+Check out the configuration reference at https://huggingface.co/docs/hub/spaces-config-reference
 # 📄 RAG Document Chat
 
 A web application that lets you upload documents and ask questions about them using AI.
