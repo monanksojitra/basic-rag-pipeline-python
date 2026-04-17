@@ -9,7 +9,14 @@ import sys
 import logging
 from pathlib import Path
 import streamlit as st
-from dotenv import load_dotenv
+
+# Try to import dotenv, fallback if not available
+try:
+    from dotenv import load_dotenv
+
+    has_dotenv = True
+except ImportError:
+    has_dotenv = False
 
 # ============================================================
 # LOGGING SETUP - Clean and focused
@@ -29,9 +36,14 @@ console = logging.StreamHandler(sys.stdout)
 console.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
 logger.addHandler(console)
 
-# Load .env from project directory (explicitly load our .env file)
-env_path = Path(__file__).parent / ".env"
-load_dotenv(env_path, override=True)
+# Load .env from project directory if dotenv is available
+if has_dotenv:
+    env_path = Path(__file__).parent / ".env"
+    load_dotenv(env_path, override=True)
+else:
+    # Fallback: read from Streamlit secrets
+    # Streamlit Cloud provides secrets as environment variables
+    pass
 
 st.set_page_config(
     page_title="RAG Document Chat",
