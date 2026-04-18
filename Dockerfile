@@ -13,4 +13,4 @@ COPY . .
 
 EXPOSE 7860
 
-CMD ["streamlit", "run", "app.py", "--server.address", "0.0.0.0", "--server.port", "7860", "--server.fileWatcherType", "none"]
+CMD ["streamlit", "run", "app.py", "--server.address", "0.0.0.0", "--server.port", "7860", "--server.fileWatcherType", "none", "--server.enableCORS", "false", "--server.enableXsrfProtection", "false", "--server.maxUploadSize", "50"]
