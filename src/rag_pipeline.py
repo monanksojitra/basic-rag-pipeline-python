@@ -31,11 +31,19 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.document_loaders import (
     PyMuPDFLoader,
     TextLoader,
-    UnstructuredMarkdownLoader,
 )
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
+
+try:
+    import unstructured  # noqa: F401
+    from langchain_community.document_loaders import UnstructuredMarkdownLoader
+
+    HAS_UNSTRUCTURED_MARKDOWN = True
+except ImportError:
+    UnstructuredMarkdownLoader = None
+    HAS_UNSTRUCTURED_MARKDOWN = False
 
 
 # ============================================================
@@ -65,7 +73,13 @@ def get_file_loader(file_path: str):
     elif suffix == ".txt":
         return TextLoader(file_path, encoding="utf-8")
     elif suffix == ".md":
-        return UnstructuredMarkdownLoader(file_path)
+        if HAS_UNSTRUCTURED_MARKDOWN:
+            return UnstructuredMarkdownLoader(file_path)
+
+        logger.warning(
+            "Optional dependency 'unstructured' is missing; using TextLoader for markdown"
+        )
+        return TextLoader(file_path, encoding="utf-8")
     else:
         raise ValueError(f"Unsupported file type: {suffix}")
 
@@ -119,17 +133,24 @@ def load_uploaded_file(uploaded_file) -> Tuple[str, List[Document]]:
     suffix = Path(uploaded_file.name).suffix or ".txt"
     logger.debug(f"File suffix: {suffix}")
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        tmp.write(uploaded_file.getbuffer())
-        tmp_path = tmp.name
-    logger.debug(f"Saved to temp: {tmp_path}")
+    tmp_path = None
 
-    # Load the document
-    documents = load_document(tmp_path)
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp.write(uploaded_file.getbuffer())
+            tmp_path = tmp.name
+        logger.debug(f"Saved to temp: {tmp_path}")
 
-    logger.info(f"Uploaded file loaded: {len(documents)} docs")
+        # Load the document
+        documents = load_document(tmp_path)
 
-    return tmp_path, documents
+        logger.info(f"Uploaded file loaded: {len(documents)} docs")
+
+        return tmp_path, documents
+    except Exception:
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+        raise
 
 
 def split_documents(
@@ -341,10 +362,13 @@ def process_document(
     """
     # Step 1: Load document
     if uploaded_file is not None:
-        tmp_path, documents = load_uploaded_file(uploaded_file)
-        file_name = uploaded_file.name
-        # Clean up temp file after loading
-        os.unlink(tmp_path)
+        tmp_path = None
+        try:
+            tmp_path, documents = load_uploaded_file(uploaded_file)
+            file_name = uploaded_file.name
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                os.unlink(tmp_path)
     elif file_path is not None:
         documents = load_document(file_path)
         file_name = Path(file_path).name

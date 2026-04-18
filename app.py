@@ -65,6 +65,9 @@ from src.llm_client import (
 )
 
 
+MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "25"))
+
+
 def init_session():
     """Initialize session state"""
     if "vector_db" not in st.session_state:
@@ -132,9 +135,28 @@ def main():
     )
 
     if uploaded_file:
-        st.success(f"✅ {uploaded_file.name}")
+        file_size_bytes = getattr(uploaded_file, "size", 0)
+        file_size_mb = file_size_bytes / (1024 * 1024)
+        upload_error = None
 
-        if st.button("⚡ Process Document", type="primary"):
+        if file_size_bytes == 0:
+            upload_error = "Uploaded file is empty. Please upload a non-empty document."
+        elif file_size_mb > MAX_UPLOAD_MB:
+            upload_error = (
+                f"File is too large ({file_size_mb:.2f} MB). "
+                f"Maximum allowed is {MAX_UPLOAD_MB} MB."
+            )
+
+        st.success(f"✅ {uploaded_file.name}")
+        st.caption(f"Size: {file_size_mb:.2f} MB")
+
+        if upload_error:
+            st.error(upload_error)
+            logger.warning(upload_error)
+
+        if st.button(
+            "⚡ Process Document", type="primary", disabled=bool(upload_error)
+        ):
             with st.spinner("Processing..."):
                 try:
                     logger.info(f"Processing: {uploaded_file.name}")
@@ -153,8 +175,11 @@ def main():
                     st.success(f"✅ Done! {num_chunks} chunks from {file_name}")
 
                 except Exception as e:
-                    logger.error(f"❌ Error: {e}")
-                    st.error(f"Error: {e}")
+                    logger.exception("❌ Document processing failed")
+                    st.error(
+                        f"Failed to process '{uploaded_file.name}': "
+                        f"{type(e).__name__}: {e}"
+                    )
 
         if st.session_state.current_file:
             st.caption(f"📄 Loaded: {st.session_state.current_file}")
