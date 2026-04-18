@@ -1,7 +1,8 @@
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-	PYTHONUNBUFFERED=1
+	PYTHONUNBUFFERED=1 \
+	STREAMLIT_SERVER_FILE_WATCHER_TYPE=none
 
 WORKDIR /app
 
@@ -12,4 +13,4 @@ COPY . .
 
 EXPOSE 7860
 
-CMD ["streamlit", "run", "app.py", "--server.address", "0.0.0.0", "--server.port", "7860"]
+CMD ["streamlit", "run", "app.py", "--server.address", "0.0.0.0", "--server.port", "7860", "--server.fileWatcherType", "none"]
